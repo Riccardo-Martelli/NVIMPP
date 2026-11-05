@@ -15,15 +15,17 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <filesystem>
+#include <getopt.h>
 
 using namespace std;
 
 #define HL 604800 // seconds in 7 days
-#define LIMIT 5000 // Number of limiting lines for reading a file
-#define MENU_ROWS 10 // max rows of the inline picker list
+#define LIMIT 10000 // Number of limiting lines for reading a file
+#define N_UPDATES 1000 // it means that it trims the db after 1000 calls
+#define BYTES_CHECK (200*(LIMIT + N_UPDATES))
+#define MENU_ROWS 15 // max rows of the inline picker list
 
 //NOTE: the default implementation is the scoring. 
-//BUG: the storage has to be limited so far there is not limit 
 
   struct Data{
     int duration_s;
@@ -34,11 +36,33 @@ using namespace std;
   };
 
 double weight(long deltaTime, double halflife){
-    // this takes a long integer
-  // BUG: this is overcomplicarted fot not FUCKING REASON
-    return exp(-log(2.0)*(deltaTime)/halflife);
+    return pow(0.5,(deltaTime)/halflife);
 }
 
+//trim the history file
+void trim_history(const string& file){
+    vector<string> lines;
+    ifstream in(file);
+    string s;
+
+    while(getline(in, s))
+      lines.emplace_back(s);
+
+    in.close();
+    if( lines.size() <= LIMIT + N_UPDATES ) 
+      return;
+
+    string tmp = file + ".tmp";
+    ofstream out(tmp);
+
+    for(size_t i=lines.size() - LIMIT; i<lines.size(); i++)
+      out << lines[i] << "\n";
+
+    out.close();
+    filesystem::rename(tmp, file); // atomic: never a half-written history
+}
+
+//How long ago was the cmd executed
 string timeAgo(long dt){
 
     if(dt < 0) dt = 0; // future timestamp or clock skew
@@ -58,6 +82,10 @@ int pickMenu(const vector<Data>& items){
     if(items.empty()) return -1;
 
     int tty = open("/dev/tty", O_RDWR); // talk to the terminal directly
+    if ( tty == -1 ){
+      perror( "nvimi: open /dev/tty" ); 
+      exit(4);
+    }
     termios oldt, raw;
     tcgetattr(tty, &oldt);
 
@@ -141,53 +169,86 @@ int pickMenu(const vector<Data>& items){
     return sel;
 }
 
-void read_data(string file, vector<string> &file_names, chrono::duration<float> &deltaTime){
+void read_data(string file, vector<string> &file_names){
     string output;
-    auto now = chrono::system_clock::now();
     ifstream in(file);
 
     while ( getline(in, output) ){
-      istringstream ss(output);
-      string output1; // name of the file
-      string filepath; // name of the file
+      istringstream ss( output );
+      string output1; // raw arguments
+      string filepath; // resolved path
       tm tm = {}; // struct for the time
-      ss >> get_time(&tm,"%a %b %d %H:%M:%S %Y") >> filepath;
-      getline(ss >> ws, output1);
-      tm.tm_isdst = -1; // takes care of Daylight Saving Time
-      file_names.emplace_back(output1);
-      deltaTime = now - chrono::system_clock::from_time_t(mktime(&tm));
-      long appo = chrono::duration_cast<chrono::seconds>(deltaTime).count(); 
-    }  
+      ss >> get_time(&tm,"%a %b %d %H:%M:%S %Y");
+      if( ss.fail() ) continue; // malformed line
+      getline( ss >> ws, filepath, '\t' );
+      getline( ss, output1 );
+      file_names.emplace_back( output1 == "NO_ARG" ? filepath + "  dashboard" : filepath );
+    }
+
     
     in.close();
 }
 
+void help(){
+  cout << "Usage: nvimi [options] [mode]\n\n";
+  cout << "Modes:\n";
+  cout << "  (none)      picker: files ranked by frecency (frequency and recency), Enter opens\n";
+  cout << "  stats       files ranked by number of launches\n";
+  cout << "  history     every launch with date and time since\n\n";
+  cout << "Options:\n";
+  cout << "  -h, --help          show this help\n";
+  cout << "  -v, --version       show version\n";
+  cout << "  -f, --file PATH     read history from PATH instead of ~/.local/share/nvim2/history_nvim.csv\n";
+  cout << "  -n, --rows N        rows shown in the picker (default " << MENU_ROWS << ")\n\n";
+  cout << "Picker keys:\n";
+  cout << "  j / k, Up / Down    move\n";
+  cout << "  Enter               open\n";
+  cout << "  q, Esc, Ctrl-C      quit\n";
+}
+
 int main(int argc, char **argv){
  
-  //define current time and date
-  auto now = chrono::system_clock::now();
+  static option long_opts[] = {
+    {"help", no_argument, nullptr, 'h'},
+    {"version", no_argument, nullptr, 'v'},
+    {"file", required_argument, nullptr, 'f'},
+    {"rows", required_argument, nullptr, 'n'},
+    {nullptr, 0, nullptr, 0}
+  };
+  
+  string db_override;
+  int rows = MENU_ROWS, opt;
+  
   bool stats = false;
   bool history = false;
   bool defult = true;
-  
-  string output;
-  vector<string> file_names; 
-  chrono::duration<float> deltaTime; 
+
+  while((opt = getopt_long(argc, argv, "hvf:n:", long_opts, nullptr)) != -1){
+    switch(opt){
+      case 'h': help(); exit(0);
+      case 'v':
+        cout << "nvimi 1.0" << "\n";
+        exit(0);
+      case 'f': db_override = optarg; break;
+      case 'n': rows = atoi(optarg);
+        if(rows < 1){ cerr << "nvimi: --rows needs a positive number\n"; exit(1); }
+        break;
+      default: // getopt already printed "invalid option"
+        cerr << "Try 'nvimi --help'.\n";
+        exit(1);
+    }
+  }
 
   // finding home
   const char* env = getenv("HOME");
   if(!env){
-        cerr << "HOME not set. You need to properly set home before using this program." << endl;
+        cerr << "HOME not set. You need to properly set home before using this program.\n";
         exit(1);
   }
+
   filesystem::path home(env); // the var name is home
-  string db_file = home / ".local/share/nvim2/history_nvim.csv"; // the var name is file
-  
-  //checks file existence
-  if(!filesystem::exists(db_file)){
-    cerr << "\033[1;31mERROR!!\033[0m The file " << db_file << " does not exist.\nPlease make sure you have the correct path and that the file is present." << endl;
-    exit(1);
-  }
+  string db_file = home / ".local/share/nvim2/history_nvim.csv"; // the var name is file 
+
 
   if ( argc == 2 ){
     string_view input = argc > 1 ? argv[1] : "";
@@ -209,19 +270,31 @@ int main(int argc, char **argv){
     cout << "\nReading file from : " << db_file << endl; 
   }
 
+  //define current time and date
+  auto now = chrono::system_clock::now();
+  
+  string output;
+  vector<string> file_names; 
+  chrono::duration<float> deltaTime; 
+
+  //checks file existence
+  if(!filesystem::exists(db_file)){
+    cerr << "\033[1;31mERROR!!\033[0m The file " << db_file << " does not exist.\nPlease make sure you have the correct path and that the file is present." << endl;
+    exit(1);
+  }
+
   vector<Data> store_Data;
   Data entry {};
 
   // DEFAULT BEHAVIOR
   if ( defult ){
+    
+    if(filesystem::file_size(db_file) > BYTES_CHECK)
+      trim_history(db_file);
+
     ifstream in(db_file);
     string output;
-
-    chrono::duration<float> deltaTime; 
    
-    vector<string>::iterator ip;
-    vector<string> copy_file_names = file_names;
-
     unordered_map<string, int> delta_t; 
     unordered_map<string, float> scores; 
     unordered_map<string, int> freq_map; 
@@ -234,8 +307,11 @@ int main(int argc, char **argv){
       string output1; // name of the file
       string filepath; // name of the file mhhh yeah 
       tm tm = {}; // struct for the time
-      ss >> get_time(&tm,"%a %b %d %H:%M:%S %Y") >> filepath;
-      getline( ss >> ws, output1 );
+      ss >> get_time(&tm,"%a %b %d %H:%M:%S %Y");
+      if(ss.fail())
+        continue;
+      getline( ss >> ws,  filepath, '\t' );
+      getline( ss, output1);
       bool dash = (output1 == "NO_ARG");
       output1 = dash ? filepath + "\tNO_ARG" : filepath;
       flag_map[output1] = dash ? "NO_ARG" : "";
@@ -265,7 +341,7 @@ int main(int argc, char **argv){
 
   // STATISTCS
   }else if ( stats ){
-    read_data(db_file, file_names, deltaTime);
+    read_data(db_file, file_names);
 
     unordered_map<string, int> score; 
     for ( auto& f : file_names )
@@ -276,11 +352,11 @@ int main(int argc, char **argv){
     stable_sort(ranked.begin(), ranked.end(), [](auto& a, auto& b){ return a.second > b.second; });
 
     cout << "         NVIM commands statistics:" << endl;
-    cout << "\033[1;32mposition, \033[1;34mfrequency, \033[1;31mcmd\033[0m\n";
+    cout << "\033[1;32mrank, \033[1;34mfrequency, \033[1;31mcmd\033[0m\n";
 
     int position = 1;
     for ( auto& p : ranked ){
-        cout << "\033[1;32m" << position << "." << " \033[1;34m" << p.second  << " \033[1;31m" << p.first << "\033[0m\n";
+        cout << "\033[1;32m" << position << "." << "            \033[1;34m" << p.second  << "  \033[1;31m" << p.first << "\033[0m\n";
         position++;
     }
     cout << "\n";
@@ -291,21 +367,23 @@ int main(int argc, char **argv){
   }else if ( history ){
 
     ifstream inh(db_file);
-    cout << "          NVIM commands statistics" << endl;
-    cout << "\033[1;32m" << "          Date" << "\033[1;34m" << "               Ago" << "\033[1;31m" << "       Name" << "\033[0m\n";
+    cout << "          NVIM commands history" << endl;
+    cout << "\033[1;32m" << "          Date" << "\033[1;34m" << "               Ago" << "\033[1;31m" << "     Name" << "\033[0m\n";
     
-    while ( getline(inh, output)){
-      istringstream ss(output);
-      string output1; // name of the file
-      string filepath; // name of the file
+    while ( getline(inh, output) ){
+      istringstream ss( output );
+      string output1; // raw arguments
+      string filepath; // resolved path
       tm tm = {}; // struct for the time
-      ss >> get_time(&tm,"%a %b %d %H:%M:%S %Y") >> filepath;
-      getline(ss >> ws, output1);
+      ss >> get_time(&tm,"%a %b %d %H:%M:%S %Y");
+      if( ss.fail() ) continue; // malformed line
+      getline( ss >> ws, filepath, '\t' );
+      getline( ss, output1 );
       tm.tm_isdst = -1; // takes care of Daylight Saving Time
-      file_names.emplace_back(output1);
-      deltaTime = now - chrono::system_clock::from_time_t(mktime(&tm));
-      long appo = chrono::duration_cast<chrono::seconds>(deltaTime).count(); 
-      cout << "\033[0;32m" << put_time(&tm,"%a %b %d %H:%M:%S %Y") << "  \033[0;34m" << setw(9) << timeAgo(appo) << "  \033[0;31m" << output1 << "\033[0m\n";
+      deltaTime = now - chrono::system_clock::from_time_t( mktime(&tm) );
+      long appo = chrono::duration_cast<chrono::seconds>( deltaTime ).count();
+      string name = output1 == "NO_ARG" ? filepath + "  dashboard" : output1;
+      cout << "\033[0;32m" << put_time(&tm,"%a %b %d %H:%M:%S %Y") << "  \033[0;34m" << setw(9) << timeAgo(appo) << "  \033[0;31m" << name << "\033[0m\n";
     }
 
     inh.close();
@@ -323,13 +401,14 @@ int main(int argc, char **argv){
         cerr << "ERROR: Could not change directory to " << store_Data[index].cmd << endl;
         exit(3);
       }
-      chdir(store_Data[index].cmd.c_str());
       execlp("nvim2","nvim2", (char *) nullptr );
       perror( ("execlp nvim2") );
+      exit(127);
     }
     else{
       execlp("nvim2","nvim2", store_Data[index].cmd.c_str(), (char *) nullptr );
       perror( ("execlp nvim2 " + store_Data[index].cmd) .c_str() );
+      exit(127);
     }
   }
 
