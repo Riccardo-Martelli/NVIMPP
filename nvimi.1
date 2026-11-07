@@ -1,0 +1,132 @@
+.TH NVIMI 1 "November 2026" "nvimi 1.0" "User Commands"
+.nh
+.SH NAME
+nvimi \- rank and reopen files from the nvim2 launch history
+.SH SYNOPSIS
+.B nvimi
+.RB [ \-h | \-v ]
+.RB [ stats | history ]
+.SH DESCRIPTION
+.B nvimi
+reads the history written by
+.BR nvim2 (1).
+Without a mode it shows an inline picker below the prompt, with files ranked by frecency (frequency weighted by recency).
+Each row shows how many times the file was opened, its score and its path.
+Rows marked
+.B dashboard
+are launches without a file; selecting one opens Neovim in that folder.
+.PP
+The selected entry is opened through
+.BR nvim2 (1),
+so the pick is recorded as a new launch.
+.SH MODES
+.TP
+.I (none)
+Inline picker ranked by frecency.
+In this mode the history file is also trimmed when it has grown past its limit.
+.TP
+.B stats
+Print every file ranked by the number of launches, followed by the total number of launches and of distinct files.
+.TP
+.B history
+Print every launch with its date, the time elapsed since then, and the arguments as typed.
+.SH OPTIONS
+.TP
+.BR \-h ", " \-\-help
+Show a short help and exit.
+.TP
+.BR \-v ", " \-\-version
+Show the version and exit.
+.SH PICKER KEYS
+.TP
+.BR j ", Down"
+Move down.
+.TP
+.BR k ", Up"
+Move up.
+.TP
+.B Enter
+Open the selected entry.
+.TP
+.BR q ", Esc, Ctrl-C"
+Quit without opening anything.
+.SH CONFIGURATION
+.B nvimi
+reads the same configuration file as
+.BR nvim2 (1)
+and exits with an error if it is missing.
+Set all four keys: missing ones are not filled with defaults.
+.TP
+.B limit
+Number of history lines kept after a trim.
+.TP
+.B wait
+Number of lines allowed past
+.I limit
+before the next trim.
+.TP
+.B rows
+Maximum number of rows in the picker.
+.TP
+.B halflife_days
+Half-life of the frecency score, in days.
+.SH SCORING
+Each recorded launch adds 0.5^(age/half-life) to the score of its file, where age is the time elapsed since that launch.
+With a half-life of 7 days, a launch from today counts 1 and one from a week ago counts 0.5.
+.SH FILES
+.TP
+.I ~/.config/nvim2/nvim2.config
+Configuration file.
+.TP
+.I ~/.local/share/nvim2/history_nvim.csv
+History file written by
+.BR nvim2 (1).
+Malformed lines are skipped.
+.SH ENVIRONMENT
+.TP
+.B HOME
+Used to locate the configuration and history files.
+.B nvimi
+exits with an error if it is not set.
+.SH EXIT STATUS
+.TP
+.B 0
+Success, or the picker was closed without a selection.
+.TP
+.B 1
+Invalid argument or option,
+.B HOME
+not set, or history file missing.
+.TP
+.B 2
+Internal error: no mode selected.
+.TP
+.B 3
+Configuration file missing, or changing to the folder of a dashboard entry failed.
+.TP
+.B 4
+No terminal available for the picker
+.RI ( /dev/tty ).
+.TP
+.B 127
+.BR nvim2 (1)
+could not be started.
+.PP
+When an entry is opened,
+.B nvimi
+is replaced by
+.BR nvim2 (1),
+so the exit status is that of Neovim.
+.SH EXAMPLES
+.TP
+.B nvimi
+Pick a recent file and open it.
+.TP
+.B nvimi stats
+See which files are opened most.
+.TP
+.B nvimi history | less \-R
+Browse the full launch history with colors.
+.SH SEE ALSO
+.BR nvim2 (1),
+.BR nvim (1)

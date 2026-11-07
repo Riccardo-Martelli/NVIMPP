@@ -15,6 +15,8 @@ nvimi: nvimi.cpp
 install: nvim2 nvimi
 	install -Dm755 nvim2 $(PREFIX)/bin/nvim2
 	install -Dm755 nvimi $(PREFIX)/bin/nvimi
+	cp nvim2.1 $(PREFIX)/share/man/man1/
+	cp nvimi.1 $(PREFIX)/share/man/man1/
 
 db_install:
 	install -d $(DATADIR)
@@ -22,11 +24,13 @@ db_install:
 
 config:
 	install -d $(CONFDIR)
-	touch $(CONFDIR)/nvim2.config
+	mv ./nvim2.config $(CONFDIR)/nvim2.config
 
 uninstall:
 	rm -f $(PREFIX)/bin/nvim2
 	rm -f $(PREFIX)/bin/nvimi
+	rm -f $(PREFIX)/share/man/man1/nvim2.1
+	rm -f $(PREFIX)/share/man/man1/nvimi.1
 
 clear:
 	rm nvim2

@@ -1,0 +1,157 @@
+.TH NVIM2 1 "November 2026" "nvim2 1.0" "User Commands"
+.nh
+.SH NAME
+nvim2 \- Neovim wrapper that records every launch for frecency ranking
+.SH SYNOPSIS
+.B nvim2
+.RI [ nvim-options ]
+.RI [ file ...]
+.br
+.B nvim2
+.RI [ nvim-options ]
+.I query
+.RI [ query ...]
+.B \-\-find
+.br
+.B nvim2 \-\-init
+.BR bash | zsh
+.SH DESCRIPTION
+.B nvim2
+records each launch in a history file, then runs
+.BR nvim (1)
+with the same arguments.
+Each file named on the command line gets one history line with the date, its absolute path and the arguments as typed.
+A launch without a file records the current folder as a dashboard entry.
+.PP
+Neovim options are passed through unchanged.
+Arguments starting with
+.B \-
+or
+.B +
+are not treated as files, and neither is the value following an option that takes one
+.RB ( \-c ,
+.BR \-\-cmd ,
+.BR \-u ,
+.BR \-i ,
+.BR \-t ,
+.BR \-q ,
+.BR \-s ,
+.BR \-w ,
+.BR \-W ,
+.BR \-S ,
+.BR \-\-listen ,
+.BR \-\-startuptime ).
+Every argument after
+.B \-\-
+is treated as a file.
+.PP
+The history is read by
+.BR nvimi (1),
+which ranks files by frecency and opens them.
+.SH OPTIONS
+.TP
+.B \-\-find
+Treat the non-option words as a search query instead of file names.
+.B nvim2
+opens the existing file from the history with the highest frecency score whose path matches the query, and records that launch.
+Matching is case-insensitive, the words must appear in the path in the order given, and the last word must appear in the file name.
+If nothing matches, an error is printed and Neovim is not started.
+.TP
+.BR "\-\-init bash" | zsh
+Print shell code that binds Alt-Enter to run the current command line with
+.B \-\-find
+appended, when the line starts with
+.B nvim
+or
+.BR nvim2 .
+Load it from the shell startup file with
+.BR "eval \(dq$(nvim2 \-\-init bash)\(dq" .
+.TP
+.B \-\-vim
+Run
+.BR vim (1)
+instead of
+.BR nvim .
+The launch is recorded in the same history.
+.SH CONFIGURATION
+The configuration file contains one
+.I "key = value"
+pair per line, with a space on each side of the equals sign.
+Values are whole numbers.
+Empty lines and lines starting with
+.B #
+are ignored.
+If the file is missing, a warning is printed and the defaults are used.
+.TP
+.BI limit " (default 10000)"
+Number of history lines kept after a trim.
+.TP
+.BI wait " (default 1000)"
+Number of lines allowed past
+.I limit
+before the next trim.
+.TP
+.BI rows " (default 15)"
+Maximum number of rows in the
+.BR nvimi (1)
+picker.
+.TP
+.BI halflife_days " (default 7)"
+Half-life of the frecency score, in days.
+.SH SCORING
+Each recorded launch adds 0.5^(age/half-life) to the score of its file, where age is the time elapsed since that launch.
+.SH FILES
+.TP
+.I ~/.config/nvim2/nvim2.config
+Configuration file.
+.TP
+.I ~/.local/share/nvim2/history_nvim.csv
+History file.
+One line per launch with three tab-separated fields: local date and time, absolute path (or the current folder), and the arguments as typed (or
+.B NO_ARG
+for a launch without a file).
+Once the file is larger than about 200 * (limit + wait) bytes and holds more than limit + wait lines, the oldest lines are removed so that the newest
+.I limit
+lines remain.
+.SH ENVIRONMENT
+.TP
+.B HOME
+Used to locate the configuration and history files.
+.B nvim2
+exits with an error if it is not set.
+.SH EXIT STATUS
+On success
+.B nvim2
+is replaced by Neovim, so the exit status is that of Neovim.
+Otherwise:
+.TP
+.B 1
+.B HOME
+is not set, the history file cannot be opened for writing,
+.B \-\-find
+was given without a query or found no match, or
+.B \-\-init
+was given an unsupported shell.
+.TP
+.B 127
+Neovim could not be started.
+.SH EXAMPLES
+.TP
+.B nvim2 main.cpp
+Open and record
+.IR main.cpp .
+.TP
+.B nvim2 \-R notes.md
+Open read-only; the option reaches Neovim unchanged.
+.TP
+.B nvim2 conway cgof \-\-find
+Open the best matching file from the history, for example
+.IR ~/projects/conwaygof/cgof.cpp .
+.TP
+.B alias nvim=nvim2
+Record every
+.B nvim
+typed in the shell.
+.SH SEE ALSO
+.BR nvimi (1),
+.BR nvim (1)

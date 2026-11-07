@@ -19,21 +19,55 @@
 
 using namespace std;
 
-#define HL 604800 // seconds in 7 days
-#define LIMIT 10000 // Number of limiting lines for reading a file
-#define N_UPDATES 1000 // it means that it trims the db after 1000 calls
-#define BYTES_CHECK (200*(LIMIT + N_UPDATES))
-#define MENU_ROWS 15 // max rows of the inline picker list
-
 //NOTE: the default implementation is the scoring. 
 
-  struct Data{
-    int duration_s;
-    int freq;
-    float score;
-    string cmd;
-    string flag;
-  };
+struct Data{
+  int duration_s;
+  int freq;
+  float score;
+  string cmd;
+  string flag;
+};
+
+unsigned int LIMIT = 10000; // Number of limiting lines for reading a file
+unsigned int N_UPDATES = 1000; // it means that it trims the db after 1000 calls
+unsigned int MENU_ROWS = 15; // max rows of the inline picker list
+unsigned int HL = 7*86400; // half-life in seconds
+unsigned int BYTES_CHECK = (200*(LIMIT + N_UPDATES)); // Rough estimate of the bytesize of the file
+
+void read_config(string home){
+
+  string config_file = home + "/.config/nvim2/nvim2.config";
+  ifstream in(config_file);
+  if(!in.is_open()){
+    cerr << "\033[1;31mERROR!!\033[0m Cannot read config file. Check the path to the config";
+    exit(3);
+  }
+
+  string line;
+  string key;
+  unsigned int value;
+  string equal;
+
+  unordered_map<string, unsigned int> config;
+
+  while(getline(in, line)){
+    if(line.empty() || line[0] == '#') //avoid empty lines and make comments available
+      continue;
+    
+    istringstream ss( line );
+    ss >> key >> equal >> value;
+    config[key] = value;
+
+   }
+
+  LIMIT = config["limit"];
+  N_UPDATES = config["wait"];
+  MENU_ROWS = config["rows"];
+  HL = 86400*config["halflife_days"]; //86400 is the number of seconds in a 24h day
+  BYTES_CHECK = (200*(LIMIT + N_UPDATES)); // Rough estimate of the bytesize of the file
+
+}
 
 double weight(long deltaTime, double halflife){
     return pow(0.5,(deltaTime)/halflife);
@@ -41,40 +75,40 @@ double weight(long deltaTime, double halflife){
 
 //trim the history file
 void trim_history(const string& file){
-    vector<string> lines;
-    ifstream in(file);
-    string s;
+  vector<string> lines;
+  ifstream in(file);
+  string s;
 
-    while(getline(in, s))
-      lines.emplace_back(s);
+  while(getline(in, s))
+    lines.emplace_back(s);
 
-    in.close();
-    if( lines.size() <= LIMIT + N_UPDATES ) 
-      return;
+  in.close();
+  if( lines.size() <= LIMIT + N_UPDATES ) 
+    return;
 
-    string tmp = file + ".tmp";
-    ofstream out(tmp);
+  string tmp = file + ".tmp";
+  ofstream out(tmp);
 
-    for(size_t i=lines.size() - LIMIT; i<lines.size(); i++)
-      out << lines[i] << "\n";
+  for(size_t i=lines.size() - LIMIT; i<lines.size(); i++)
+    out << lines[i] << "\n";
 
-    out.close();
-    filesystem::rename(tmp, file); // atomic: never a half-written history
+  out.close();
+  filesystem::rename(tmp, file); // atomic: never a half-written history
 }
 
 //How long ago was the cmd executed
 string timeAgo(long dt){
 
-    if(dt < 0) dt = 0; // future timestamp or clock skew
+  if(dt < 0) dt = 0; // future timestamp or clock skew
 
-    // seconds per unit: s, min, h, d, w, mo (30 d), y (365 d)
-    const long size[7] = {1, 60, 3600, 86400, 604800, 2592000, 31536000};
-    const char* unit[7] = {"s", "min", "h", "d", "w", "mo", "y"};
-    int i = 6;
+  // seconds per unit: s, min, h, d, w, mo (30 d), y (365 d)
+  const long size[7] = {1, 60, 3600, 86400, 604800, 2592000, 31536000};
+  const char* unit[7] = {"s", "min", "h", "d", "w", "mo", "y"};
+  int i = 6;
 
-    while(i > 0 && dt < size[i]) i--;
+  while(i > 0 && dt < size[i]) i--;
 
-    return to_string(dt / size[i]) + unit[i] + " ago";
+  return to_string(dt / size[i]) + unit[i] + " ago";
 }
 
 int pickMenu(const vector<Data>& items){
@@ -97,9 +131,9 @@ int pickMenu(const vector<Data>& items){
     tcsetattr(tty, TCSANOW, &raw);
 
     winsize ws;
-    ioctl(tty, TIOCGWINSZ, &ws);
+    ioctl(tty, TIOCGWINSZ, &ws); // get win size
     int n = items.size();
-    int h = min({n, MENU_ROWS, max(1, ws.ws_row - 4)}); // list rows, never more than the screen allows
+    int h = min({ n, (int)MENU_ROWS, max(1, ws.ws_row - 4) }); // list rows, never more than the screen allows
     int total = h + 3; // + 3 header lines
     int avail = max(4, ws.ws_col - 17); // columns left for the command after "> ", freq, score and gaps
 
@@ -122,7 +156,7 @@ int pickMenu(const vector<Data>& items){
 
         for(int i=top; i<min(n, top + h); i++){
             string bg = (i == sel ? ";47" : ""); // white background on the selected row
-            string name = items[i].cmd + (items[i].flag == "NO_ARG" ? "  dashboard" : "");
+            string name = items[i].cmd + (items[i].flag == "NO_ARG" ? "\033[1;35m  dashboard\033[0m" : "");
             if((int)name.size() > avail) name = "..." + name.substr(name.size() - avail + 3); // keep the tail: the file name is the informative part
             frame << (i == sel ? "\033[0;30;47m> " : "\033[0m  ") << "\033[0;32" << bg << "m" << right << setw(4) << items[i].freq << "  \033[0;31" << bg << "m" << setw(7) << fixed << setprecision(2) << items[i].score << "  \033[0" << (i == sel ? ";30;47" : "") << "m" << name << "\033[0m\r\n";
         }
@@ -198,8 +232,6 @@ void help(){
   cout << "Options:\n";
   cout << "  -h, --help          show this help\n";
   cout << "  -v, --version       show version\n";
-  cout << "  -f, --file PATH     read history from PATH instead of ~/.local/share/nvim2/history_nvim.csv\n";
-  cout << "  -n, --rows N        rows shown in the picker (default " << MENU_ROWS << ")\n\n";
   cout << "Picker keys:\n";
   cout << "  j / k, Up / Down    move\n";
   cout << "  Enter               open\n";
@@ -211,28 +243,21 @@ int main(int argc, char **argv){
   static option long_opts[] = {
     {"help", no_argument, nullptr, 'h'},
     {"version", no_argument, nullptr, 'v'},
-    {"file", required_argument, nullptr, 'f'},
-    {"rows", required_argument, nullptr, 'n'},
     {nullptr, 0, nullptr, 0}
   };
   
-  string db_override;
   int rows = MENU_ROWS, opt;
   
   bool stats = false;
   bool history = false;
   bool defult = true;
 
-  while((opt = getopt_long(argc, argv, "hvf:n:", long_opts, nullptr)) != -1){
+  while((opt = getopt_long(argc, argv, "hv", long_opts, nullptr)) != -1){
     switch(opt){
       case 'h': help(); exit(0);
       case 'v':
         cout << "nvimi 1.0" << "\n";
         exit(0);
-      case 'f': db_override = optarg; break;
-      case 'n': rows = atoi(optarg);
-        if(rows < 1){ cerr << "nvimi: --rows needs a positive number\n"; exit(1); }
-        break;
       default: // getopt already printed "invalid option"
         cerr << "Try 'nvimi --help'.\n";
         exit(1);
@@ -249,6 +274,7 @@ int main(int argc, char **argv){
   filesystem::path home(env); // the var name is home
   string db_file = home / ".local/share/nvim2/history_nvim.csv"; // the var name is file 
 
+  read_config(home);
 
   if ( argc == 2 ){
     string_view input = argc > 1 ? argv[1] : "";
@@ -415,4 +441,3 @@ int main(int argc, char **argv){
   return 0;
 
 };
-
