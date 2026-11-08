@@ -37,11 +37,11 @@ unsigned int BYTES_CHECK = (200*(LIMIT + N_UPDATES)); // Rough estimate of the b
 
 void read_config(string home){
 
-  string config_file = home + "/.config/nvim2/nvim2.config";
+  string config_file = home + "/.config/nvimpp/nvimpp.config";
   ifstream in(config_file);
   if(!in.is_open()){
-    cerr << "\033[1;31mERROR!!\033[0m Cannot read config file. Check the path to the config";
-    exit(3);
+    cerr << "\033[1;38;5;208mWARNING!!\033[0m Cannot read config file. Check the path to the config\n";
+    return;
   }
 
   string line;
@@ -61,10 +61,11 @@ void read_config(string home){
 
    }
 
-  LIMIT = config["limit"];
-  N_UPDATES = config["wait"];
-  MENU_ROWS = config["rows"];
-  HL = 86400*config["halflife_days"]; //86400 is the number of seconds in a 24h day
+  //safe check
+  if(config.count("limit")) LIMIT = config["limit"];
+  if(config.count("wait")) N_UPDATES = config["wait"];
+  if(config.count("rows")) MENU_ROWS = config["rows"];
+  if(config.count("halflife_days")) HL = 86400*config["halflife_days"]; //86400 is the number of seconds in a 24h day
   BYTES_CHECK = (200*(LIMIT + N_UPDATES)); // Rough estimate of the bytesize of the file
 
 }
@@ -232,6 +233,7 @@ void help(){
   cout << "Options:\n";
   cout << "  -h, --help          show this help\n";
   cout << "  -v, --version       show version\n";
+  cout << "  -c, --config        show configuration file\n\n";
   cout << "Picker keys:\n";
   cout << "  j / k, Up / Down    move\n";
   cout << "  Enter               open\n";
@@ -240,9 +242,20 @@ void help(){
 
 int main(int argc, char **argv){
  
+  // finding home
+  const char* env = getenv("HOME");
+  if(!env){
+        cerr << "HOME not set. You need to properly set home before using this program.\n";
+        exit(1);
+  }
+
+  filesystem::path home(env); // the var name is home
+  string db_file = home / ".local/share/nvimpp/history_nvim.csv"; // the var name is file 
+  
   static option long_opts[] = {
     {"help", no_argument, nullptr, 'h'},
     {"version", no_argument, nullptr, 'v'},
+    {"config", no_argument, nullptr, 'c'},
     {nullptr, 0, nullptr, 0}
   };
   
@@ -252,28 +265,30 @@ int main(int argc, char **argv){
   bool history = false;
   bool defult = true;
 
-  while((opt = getopt_long(argc, argv, "hv", long_opts, nullptr)) != -1){
+  while((opt = getopt_long(argc, argv, "hvc", long_opts, nullptr)) != -1){
     switch(opt){
       case 'h': help(); exit(0);
       case 'v':
-        cout << "nvimi 1.0" << "\n";
+        cout << "nvimi 1.0.0" << "\n";
         exit(0);
+      case 'c': {
+        ifstream conf(home.string() + "/.config/nvimpp/nvimpp.config");
+        if(!conf.is_open()){
+          cerr << "\033[1;38;5;208mWARNING!!\033[0m Cannot read config file. Check the path to the config. Reverting to default values.\n";
+          return 1;
+        }
+        string line;
+        while(getline(conf, line)){
+            cout << line << "\n";
+        }
+        exit(0); 
+      }
       default: // getopt already printed "invalid option"
         cerr << "Try 'nvimi --help'.\n";
         exit(1);
     }
   }
-
-  // finding home
-  const char* env = getenv("HOME");
-  if(!env){
-        cerr << "HOME not set. You need to properly set home before using this program.\n";
-        exit(1);
-  }
-
-  filesystem::path home(env); // the var name is home
-  string db_file = home / ".local/share/nvim2/history_nvim.csv"; // the var name is file 
-
+ 
   read_config(home);
 
   if ( argc == 2 ){
@@ -425,15 +440,15 @@ int main(int argc, char **argv){
       if ( chdir(store_Data[index].cmd.c_str()) == -1 ){ // So the dashboeard opens in another directory, this feeature does not seem to
       // be available in the current version of nvim. NVIM v0.12.6
         cerr << "ERROR: Could not change directory to " << store_Data[index].cmd << endl;
-        exit(3);
+        exit(5);
       }
-      execlp("nvim2","nvim2", (char *) nullptr );
-      perror( ("execlp nvim2") );
+      execlp("nvimpp","nvimpp", (char *) nullptr );
+      perror( ("execlp nvimpp") );
       exit(127);
     }
     else{
-      execlp("nvim2","nvim2", store_Data[index].cmd.c_str(), (char *) nullptr );
-      perror( ("execlp nvim2 " + store_Data[index].cmd) .c_str() );
+      execlp("nvimpp","nvimpp", store_Data[index].cmd.c_str(), (char *) nullptr );
+      perror( ("execlp nvimpp " + store_Data[index].cmd) .c_str() );
       exit(127);
     }
   }

@@ -1,22 +1,22 @@
-.TH NVIM2 1 "November 2026" "nvim2 1.0" "User Commands"
+.TH nvimpp 1 "November 2026" "nvimpp 1.0.0" "User Commands"
 .nh
 .SH NAME
-nvim2 \- Neovim wrapper that records every launch for frecency ranking
+nvimpp \- Neovim wrapper that records every launch for frecency ranking
 .SH SYNOPSIS
-.B nvim2
+.B nvimpp
 .RI [ nvim-options ]
 .RI [ file ...]
 .br
-.B nvim2
+.B nvimpp
 .RI [ nvim-options ]
 .I query
 .RI [ query ...]
 .B \-\-find
 .br
-.B nvim2 \-\-init
+.B nvimpp \-\-init
 .BR bash | zsh
 .SH DESCRIPTION
-.B nvim2
+.B nvimpp
 records each launch in a history file, then runs
 .BR nvim (1)
 with the same arguments.
@@ -52,7 +52,7 @@ which ranks files by frecency and opens them.
 .TP
 .B \-\-find
 Treat the non-option words as a search query instead of file names.
-.B nvim2
+.B nvimpp
 opens the existing file from the history with the highest frecency score whose path matches the query, and records that launch.
 Matching is case-insensitive, the words must appear in the path in the order given, and the last word must appear in the file name.
 If nothing matches, an error is printed and Neovim is not started.
@@ -63,9 +63,9 @@ Print shell code that binds Alt-Enter to run the current command line with
 appended, when the line starts with
 .B nvim
 or
-.BR nvim2 .
+.BR nvimpp .
 Load it from the shell startup file with
-.BR "eval \(dq$(nvim2 \-\-init bash)\(dq" .
+.BR "eval \(dq$(nvimpp \-\-init bash)\(dq" .
 .TP
 .B \-\-vim
 Run
@@ -95,6 +95,10 @@ before the next trim.
 Maximum number of rows in the
 .BR nvimi (1)
 picker.
+.PP
+A key missing from the file keeps its default.
+.B nvimi \-c
+prints the current file.
 .TP
 .BI halflife_days " (default 7)"
 Half-life of the frecency score, in days.
@@ -102,10 +106,10 @@ Half-life of the frecency score, in days.
 Each recorded launch adds 0.5^(age/half-life) to the score of its file, where age is the time elapsed since that launch.
 .SH FILES
 .TP
-.I ~/.config/nvim2/nvim2.config
+.I ~/.config/nvimpp/nvimpp.config
 Configuration file.
 .TP
-.I ~/.local/share/nvim2/history_nvim.csv
+.I ~/.local/share/nvimpp/history_nvim.csv
 History file.
 One line per launch with three tab-separated fields: local date and time, absolute path (or the current folder), and the arguments as typed (or
 .B NO_ARG
@@ -117,11 +121,11 @@ lines remain.
 .TP
 .B HOME
 Used to locate the configuration and history files.
-.B nvim2
+.B nvimpp
 exits with an error if it is not set.
 .SH EXIT STATUS
 On success
-.B nvim2
+.B nvimpp
 is replaced by Neovim, so the exit status is that of Neovim.
 Otherwise:
 .TP
@@ -137,18 +141,18 @@ was given an unsupported shell.
 Neovim could not be started.
 .SH EXAMPLES
 .TP
-.B nvim2 main.cpp
+.B nvimpp main.cpp
 Open and record
 .IR main.cpp .
 .TP
-.B nvim2 \-R notes.md
+.B nvimpp \-R notes.md
 Open read-only; the option reaches Neovim unchanged.
 .TP
-.B nvim2 conway cgof \-\-find
+.B nvimpp conway cgof \-\-find
 Open the best matching file from the history, for example
 .IR ~/projects/conwaygof/cgof.cpp .
 .TP
-.B alias nvim=nvim2
+.B alias nvim=nvimpp
 Record every
 .B nvim
 typed in the shell.

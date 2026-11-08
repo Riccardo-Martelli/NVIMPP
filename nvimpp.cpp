@@ -28,7 +28,7 @@ double weight(long deltaTime, double halflife){
 
 void read_config(string home){
 
-  string config_file = home + "/.config/nvim2/nvim2.config";
+  string config_file = home + "/.config/nvimpp/nvimpp.config";
   ifstream in(config_file);
   if(!in.is_open()){
     cerr << "\033[1;38;5;208mWARNING!!\033[0m Cannot read config file. Check the path to the config. Reverting to default values.\n";
@@ -87,22 +87,22 @@ in.close();
 // These functions are needed for the bash part
 const char* BASH_INIT = R"BASH(
 if [[ $- == *i* ]]; then
-    _nvim2_alt(){
-        [[ $READLINE_LINE == nvim2\ * ]] || [[ $READLINE_LINE == nvim\ * ]] && READLINE_LINE+=" --find"
+    _nvimpp_alt(){
+        [[ $READLINE_LINE == nvimpp\ * ]] || [[ $READLINE_LINE == nvim\ * ]] && READLINE_LINE+=" --find"
         READLINE_POINT=${#READLINE_LINE}
     }
-    bind -x '"\C-x\C-f": _nvim2_alt'
+    bind -x '"\C-x\C-f": _nvimpp_alt'
     bind '"\e\C-m": "\C-x\C-f\C-m"'
 fi
 )BASH";
 
 const char* ZSH_INIT = R"ZSH(
-_nvim2_alt(){
-    [[ $BUFFER == nvim2\ * ]] || [[ $BUFFER == nvim\ * ]] && BUFFER+=" --find"
+_nvimpp_alt(){
+    [[ $BUFFER == nvimpp\ * ]] || [[ $BUFFER == nvim\ * ]] && BUFFER+=" --find"
     zle accept-line
 }
-zle -N _nvim2_alt
-bindkey '^[^M' _nvim2_alt
+zle -N _nvimpp_alt
+bindkey '^[^M' _nvimpp_alt
 )ZSH";
 
 // Stuff for --find
@@ -204,7 +204,7 @@ read_config(home.string());
   // Neovim flags whose next argument is a value, not a file
   const char* VALUE_FLAGS[] = {"-c", "--cmd", "-u", "-i", "-t", "-q", "-s", "-w", "-W", "-S", "--listen", "--startuptime"};
 
-  string hist_file = home.string() + "/.local/share/nvim2/history_nvim.csv";
+  string hist_file = home.string() + "/.local/share/nvimpp/history_nvim.csv";
   if(filesystem::exists(hist_file) && filesystem::file_size(hist_file) > BYTES_CHECK)
     trim_history(hist_file);
 
@@ -282,12 +282,12 @@ read_config(home.string());
 
   if(search_mode){
     if(file_name.empty()){
-        cerr << "nvim2: --find needs a query\n";
+        cerr << "nvimpp: --find needs a query\n";
         exit(1);
       }
     best = find_best(hist_file, file_name);
     if(best.empty()){
-        cerr << "nvim2: no match for the query\n";
+        cerr << "nvimpp: no match for the query\n";
         exit(1);
       }
     // drop the query words from the Neovim arguments and keep the flags
