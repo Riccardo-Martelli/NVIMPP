@@ -301,11 +301,11 @@ int main(int argc, char **argv){
       defult = false;
     }else{
       cerr << "\033[1;31mERROR!!\033[0m Invalid argument: " << input << endl; 
-      cerr << "Usage: " << argv[0] << " [stats|history]";
+      cerr << "Usage: " << argv[0] << " [stats|history]\n";
       exit(1);
     }
   }else if ( argc > 2 ){
-    cerr << "ERROR! too many arguments.";
+    cerr << "ERROR! too many arguments.\n";
     exit(1);
   }else{
     cout << "\nReading file from : " << db_file << endl; 
