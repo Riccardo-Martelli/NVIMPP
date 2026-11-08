@@ -168,13 +168,13 @@ Entries marked `dashboard` are bare `nvimpp` launches. Selecting one opens Neovi
 ## Captures
 ### nvimpp
 <p align="center">
-  <img src="media/nvimpp.gif" width="700" alt="random start"><br>
+  <img src="media/nvimpp.gif" width="700" alt="nvimpp demo: opening files and jumping with Alt-Enter"><br>
   <code>The gif showcases some use cases of nvimpp, namely nvimpp, nvimpp filename, and the very useful find option using Alt+Enter.</code>
 </p>
 
 ### nvimi
 <p align="center">
-  <img src="media/nvimi.gif" width="700" alt="random start"><br>
+  <img src="media/nvimi.gif" width="700" alt="nvimi demo: picker, stats and history"><br>
   <code>The gifs showcases some cases of nvimi, namely the default nvimi options that let's you select the most use commands filtered by frecency, the statistics of your commands, the history of your commands without the need for open the database.</code>
 </p>
 
@@ -275,7 +275,7 @@ After `make`, `man nvimpp` and `man nvimi` work from anywhere, as long as `~/.lo
   <img src="https://github.com/Riccardo-Martelli.png" width="90" alt="Riccardo Martelli">
 </a>
 
-**Riccardo Martelli**: [GitHub](https://github.com/Riccardo-Martelli) | [LinkedIn](LINKEDIN_URL)
+**Riccardo Martelli**: [GitHub](https://github.com/Riccardo-Martelli) | [LinkedIn](https://www.linkedin.com/in/riccardomartelli/)
 
 <img src="media/divider.svg" width="100%" height="4">
 
