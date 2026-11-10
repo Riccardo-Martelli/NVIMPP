@@ -16,6 +16,7 @@
 #include <sys/ioctl.h>
 #include <filesystem>
 #include <getopt.h>
+#include <charconv>
 
 using namespace std;
 
@@ -46,7 +47,7 @@ void read_config(string home){
 
   string line;
   string key;
-  unsigned int value;
+  long value; //needs to be a long and not unsigned otherwise the check below does not work
   string equal;
 
   unordered_map<string, unsigned int> config;
@@ -55,8 +56,11 @@ void read_config(string home){
     if(line.empty() || line[0] == '#') //avoid empty lines and make comments available
       continue;
     
-    istringstream ss( line );
+    istringstream ss( line ); // Needs to check for bad configs otherwise it might wipe out the entire history.
+    value = 0; //needed in case of missing values
     ss >> key >> equal >> value;
+    if(value <= 0) // not a number, negative or 0: all of them wipe the history, keep the default
+      continue;
     config[key] = value;
 
    }

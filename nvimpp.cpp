@@ -243,11 +243,7 @@ read_config(home.string());
     if ( strcmp(argv[i], "--vim") == 0 ){
       default_cmd = "vim";
       continue;
-    }else if( strcmp(argv[i], "--init") == 0 ){
-
-    //TODO: goddamn it will do smth
-    
-    }
+    }else if( strcmp(argv[i], "--init") == 0 ){}
 
     if ( strcmp(argv[i], "--find") == 0 ){
       search_mode = true;

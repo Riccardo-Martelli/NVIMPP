@@ -7,10 +7,10 @@ CONFDIR ?= $(HOME)/.config/nvimpp
 all: nvimpp nvimi install db_install config
 
 nvimpp: nvimpp.cpp
-	g++ -O2 nvimpp.cpp -o nvimpp
+	g++ -std=c++17 -O2 nvimpp.cpp -o nvimpp
 
 nvimi: nvimi.cpp
-	g++ -O2 nvimi.cpp -o nvimi
+	g++ -std=c++17 -O2 nvimi.cpp -o nvimi
 
 install: nvimpp nvimi
 	install -Dm755 nvimpp $(PREFIX)/bin/nvimpp

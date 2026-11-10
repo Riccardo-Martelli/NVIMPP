@@ -169,13 +169,13 @@ Entries marked `dashboard` are bare `nvimpp` launches. Selecting one opens Neovi
 ### nvimpp
 <p align="center">
   <img src="media/nvimpp.gif" width="700" alt="nvimpp demo: opening files and jumping with Alt-Enter"><br>
-  <code>The gif showcases some use cases of nvimpp, namely nvimpp, nvimpp filename, and the very useful find option using Alt+Enter.</code>
+  <code>The GIF shows some use cases of nvimpp, namely nvimpp, nvimpp filename, and the very useful find option using Alt-Enter.</code>
 </p>
 
 ### nvimi
 <p align="center">
   <img src="media/nvimi.gif" width="700" alt="nvimi demo: picker, stats and history"><br>
-  <code>The gifs showcases some cases of nvimi, namely the default nvimi options that let's you select the most use commands filtered by frecency, the statistics of your commands, the history of your commands without the need for open the database.</code>
+  <code>The GIF shows some use cases of nvimi, namely the default picker that lets you select your most used files ranked by frecency, the statistics of your files, and the history of your files without the need to open the history file.</code>
 </p>
 
 ## Configuration
