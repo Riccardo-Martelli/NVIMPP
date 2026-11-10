@@ -96,6 +96,7 @@ if [[ $- == *i* ]]; then
     }
     bind -x '"\C-x\C-f": _nvimpp_alt'
     bind '"\e\C-m": "\C-x\C-f\C-m"'
+    bind '"\e[13;3u": "\C-x\C-f\C-m"'
 fi
 )BASH";
 
@@ -106,6 +107,7 @@ _nvimpp_alt(){
 }
 zle -N _nvimpp_alt
 bindkey '^[^M' _nvimpp_alt
+bindkey '^[[13;3u' _nvimpp_alt
 )ZSH";
 
 // Stuff for --find
