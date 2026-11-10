@@ -36,7 +36,7 @@ void read_config(string home){
 
   string line;
   string key;
-  unsigned int value;
+  long value;
   string equal;
 
   unordered_map<string, unsigned int> config;

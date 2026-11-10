@@ -272,7 +272,7 @@ int main(int argc, char **argv){
     switch(opt){
       case 'h': help(); exit(0);
       case 'v':
-        cout << "nvimi 1.1.1" << "\n";
+        cout << "nvimi 1.1.2" << "\n";
         exit(0);
       case 'c': {
         ifstream conf(home.string() + "/.config/nvimpp/nvimpp.config");
