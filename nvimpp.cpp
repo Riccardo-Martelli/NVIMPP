@@ -45,8 +45,11 @@ void read_config(string home){
     if(line.empty() || line[0] == '#') //avoid empty lines and make comments available
       continue;
     
-    istringstream ss( line );
+   istringstream ss( line ); // Needs to check for bad configs otherwise it might wipe out the entire history.
+    value = 0; //needed in case of missing values
     ss >> key >> equal >> value;
+    if(value <= 0) // not a number, negative or 0: all of them wipe the history, keep the default
+      continue;
     config[key] = value;
 
    }
@@ -243,7 +246,7 @@ read_config(home.string());
     if ( strcmp(argv[i], "--vim") == 0 ){
       default_cmd = "vim";
       continue;
-    }else if( strcmp(argv[i], "--init") == 0 ){}
+    }
 
     if ( strcmp(argv[i], "--find") == 0 ){
       search_mode = true;

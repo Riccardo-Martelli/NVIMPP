@@ -16,7 +16,6 @@
 #include <sys/ioctl.h>
 #include <filesystem>
 #include <getopt.h>
-#include <charconv>
 
 using namespace std;
 
@@ -263,7 +262,7 @@ int main(int argc, char **argv){
     {nullptr, 0, nullptr, 0}
   };
   
-  int rows = MENU_ROWS, opt;
+  int opt;
   
   bool stats = false;
   bool history = false;
