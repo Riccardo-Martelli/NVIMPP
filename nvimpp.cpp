@@ -63,6 +63,12 @@ void read_config(string home){
 
 }
 
+string lower(string s){
+
+  transform(s.begin(), s.end(), s.begin(), ::tolower);
+  return s;
+}
+
 void read_editors_config(string home, string& editor){
   
   string config_file = home + "/.config/nvimpp/nvimpp.config";
@@ -82,13 +88,16 @@ void read_editors_config(string home, string& editor){
     
    istringstream ss( line ); // Needs to check for bad configs otherwise it might wipe out the entire history.
     ss >> key >> equal >> value;
+   //NOTE: Spaces do matter
+    key.erase(remove_if(key.begin(), key.end(), [](unsigned char c){ return isspace(c); } ), key.end());
+    value.erase(remove_if(value.begin(), value.end(), [](unsigned char c){ return isspace(c); }), value.end());
     config[key] = value;
 
    }
 
   //These values HAVE to be different from 0 otherwise will wipe out the history, if false defaluts to the defalut values above
-  if(config.count("editor")==1) //BUG: Spaces should not matter
-    config["editor"] =="vim" ? editor = "vim" : editor = "nvim";
+  if(config.count("editor")==1)
+    lower(config["editor"]) == "vim" ? editor = "vim" : editor = "nvim";
   else{ //default option
     cerr << "\033[1;38;5;208mWARNING!!\033[0m Reading multiple editors configs. Reverting to default values.\n";
     editor = "nvim";
@@ -141,12 +150,6 @@ bindkey '^[^M' _nvimpp_alt
 bindkey '^[[13;3u' _nvimpp_alt
 )ZSH";
 
-// Stuff for --find
-string lower(string s){
-
-  transform(s.begin(), s.end(), s.begin(), ::tolower);
-  return s;
-}
 
 //find the best match
 bool find_matches(const string& path, const vector<string>& query ){
@@ -251,7 +254,7 @@ read_config(home.string());
     exit(1);
   }
 
-  // dashboard call no argumet
+  // dashboard call no argument
   if ( argc < 2 ){
     history_file << put_time(localtime(&timestamp), "%a %b %d %H:%M:%S %Y") << "\t" << filesystem::current_path().string() << "\t" << "NO_ARG" << "\n";
     history_file.close();
