@@ -25,6 +25,7 @@ db_install:
 config:
 	install -d $(CONFDIR)
 	[ -f $(CONFDIR)/nvimpp.config ] || install -m644 nvimpp.config $(CONFDIR)/nvimpp.config
+	[ -f $(CONFDIR)/editors.config ] || install -m644 editors.config $(CONFDIR)/editors.config
 
 uninstall:
 	rm -f $(PREFIX)/bin/nvimpp

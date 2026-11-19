@@ -63,6 +63,37 @@ void read_config(string home){
 
 }
 
+void read_editors_config(string home, string& editor){
+  
+  string config_file = home + "/.config/nvimpp/nvimpp.config";
+  ifstream in(config_file);
+  if(!in.is_open()){
+    cerr << "\033[1;38;5;208mWARNING!!\033[0m Cannot read config file. Check the path to the config. Reverting to default values.\n";
+  }
+
+  string line, equal;
+  string key, value;
+
+  unordered_map<string, string> config;
+
+  while(getline(in, line)){
+    if(line.empty() || line[0] == '#') //avoid empty lines and make comments available
+      continue;
+    
+   istringstream ss( line ); // Needs to check for bad configs otherwise it might wipe out the entire history.
+    ss >> key >> equal >> value;
+    config[key] = value;
+
+   }
+
+  //These values HAVE to be different from 0 otherwise will wipe out the history, if false defaluts to the defalut values above
+  if(config.count("editor")==1) //BUG: Spaces should not matter
+    config["editor"] =="vim" ? editor = "vim" : editor = "nvim";
+  else{ //default option
+    cerr << "\033[1;38;5;208mWARNING!!\033[0m Reading multiple editors configs. Reverting to default values.\n";
+    editor = "nvim";
+  }
+}
 
 //trim the history file
 void trim_history(const string& file){
