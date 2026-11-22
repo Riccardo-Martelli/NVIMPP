@@ -40,7 +40,8 @@ void read_config(string home){
   unordered_map<string, unsigned int> config;
 
   while(getline(in, line)){
-    if(line.empty() || line[0] == '#') //avoid empty lines and make comments available
+    size_t beginning = line.find_first_not_of(" \t\r");
+    if(beginning == string::npos || line[beginning] == '#') //avoid empty lines and make comments available even with spaces and indentation
       continue;
     
    istringstream ss( line ); // Needs to check for bad configs otherwise it might wipe out the entire history.
@@ -106,7 +107,8 @@ void read_editors_config(string home, string& editor){
   //unordered_map<string, string> config;
 
   while(getline(in, line)){
-    if(line.empty() || line[0] == '#') //avoid empty lines and make comments available
+    size_t beginning = line.find_first_not_of(" \t\r");
+    if(beginning == string::npos || line[beginning] == '#') //avoid empty lines and make comments available even with spaces and indentation
       continue;
 
     if(parse_line(line, key, value) && key == "editor")
