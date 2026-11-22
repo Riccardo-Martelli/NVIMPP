@@ -71,7 +71,7 @@ string lower(string s){
 
 void read_editors_config(string home, string& editor){
   
-  string config_file = home + "/.config/nvimpp/nvimpp.config";
+  string config_file = home + "/.config/nvimpp/editors.config";
   ifstream in(config_file);
   if(!in.is_open()){
     cerr << "\033[1;38;5;208mWARNING!!\033[0m Cannot read config file. Check the path to the config. Reverting to default values.\n";
@@ -92,14 +92,15 @@ void read_editors_config(string home, string& editor){
     key.erase(remove_if(key.begin(), key.end(), [](unsigned char c){ return isspace(c); } ), key.end());
     value.erase(remove_if(value.begin(), value.end(), [](unsigned char c){ return isspace(c); }), value.end());
     config[key] = value;
-
+    cout << value;
    }
 
-  //These values HAVE to be different from 0 otherwise will wipe out the history, if false defaluts to the defalut values above
+  //These values HAVE to be different from 0 otherwise will wipe out the history, if false defaults to the default values above
   if(config.count("editor")==1)
     lower(config["editor"]) == "vim" ? editor = "vim" : editor = "nvim";
   else{ //default option
     cerr << "\033[1;38;5;208mWARNING!!\033[0m Reading multiple editors configs. Reverting to default values.\n";
+    cout << config["editor"];
     editor = "nvim";
   }
 }
@@ -234,11 +235,12 @@ int main(int argc, char **argv){
   }
   filesystem::path home(env); // the var name is home
 
-read_config(home.string());
+  read_config(home.string());
     //get current time of usage   
   time_t timestamp;
   time(&timestamp);
-  string default_cmd = "nvim";
+  string default_cmd;
+  read_editors_config(home.string(), default_cmd);
 
   // Neovim flags whose next argument is a value, not a file
   const char* VALUE_FLAGS[] = {"-c", "--cmd", "-u", "-i", "-t", "-q", "-s", "-w", "-W", "-S", "--listen", "--startuptime"};
