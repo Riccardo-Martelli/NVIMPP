@@ -34,10 +34,8 @@ void read_config(string home){
     cerr << "\033[1;38;5;208mWARNING!!\033[0m Cannot read config file. Check the path to the config. Reverting to default values.\n";
   }
 
-  string line;
-  string key;
+  string line, key, equal;
   long value;
-  string equal;
 
   unordered_map<string, unsigned int> config;
 
@@ -69,40 +67,53 @@ string lower(string s){
   return s;
 }
 
+// split "key = value" on the first '=', drop a trailing "# comment", strip whitespace
+bool parse_line(const string& line, string& key, string& value){
+
+  size_t eq = line.find('=');//pos the equal sign
+  if(eq == string::npos){
+    cerr << "\033[1;38;5;208mWARNING!!\033[0m Key missing or didn't parse. Reverting to default values.\n";
+    return false;
+  }
+
+  key = line.substr(0, eq);
+  value = line.substr(eq + 1);
+  value = value.substr(0, value.find('#'));// fix comment at the end of the cmd
+  auto strip = [](string& s){ s.erase(remove_if(s.begin(), s.end(), [](unsigned char c){ return isspace(c); }), s.end()); }; //lambda as before, recycle
+  strip(key);
+  strip(value);
+
+  //sanity check
+  if(key.empty() || value.empty()){
+    cerr << "\033[1;38;5;208mWARNING!!\033[0m Empty key or value in '" << line << "', ignored. Reverting to default values.\n";
+    return false;
+  }
+
+  return !key.empty() && !value.empty();
+}
+
 void read_editors_config(string home, string& editor){
   
+  editor = "nvim"; //default mode
   string config_file = home + "/.config/nvimpp/editors.config";
   ifstream in(config_file);
   if(!in.is_open()){
     cerr << "\033[1;38;5;208mWARNING!!\033[0m Cannot read config file. Check the path to the config. Reverting to default values.\n";
   }
 
-  string line, equal;
-  string key, value;
+  string line, key, value;
 
-  unordered_map<string, string> config;
+  //unordered_map<string, string> config;
 
   while(getline(in, line)){
     if(line.empty() || line[0] == '#') //avoid empty lines and make comments available
       continue;
+
+    if(parse_line(line, key, value) && key == "editor")
+      editor = lower(value) == "vim" ? "vim" : "nvim";
     
-   istringstream ss( line ); // Needs to check for bad configs otherwise it might wipe out the entire history.
-    ss >> key >> equal >> value;
-   //NOTE: Spaces do matter
-    key.erase(remove_if(key.begin(), key.end(), [](unsigned char c){ return isspace(c); } ), key.end());
-    value.erase(remove_if(value.begin(), value.end(), [](unsigned char c){ return isspace(c); }), value.end());
-    config[key] = value;
-    cout << value;
    }
 
-  //These values HAVE to be different from 0 otherwise will wipe out the history, if false defaults to the default values above
-  if(config.count("editor")==1)
-    lower(config["editor"]) == "vim" ? editor = "vim" : editor = "nvim";
-  else{ //default option
-    cerr << "\033[1;38;5;208mWARNING!!\033[0m Reading multiple editors configs. Reverting to default values.\n";
-    cout << config["editor"];
-    editor = "nvim";
-  }
 }
 
 //trim the history file
