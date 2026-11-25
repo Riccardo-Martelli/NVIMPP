@@ -26,42 +26,6 @@ double weight(long deltaTime, double halflife){
     return pow(0.5,(deltaTime)/halflife);
 }
 
-void read_config(string home){
-
-  string config_file = home + "/.config/nvimpp/nvimpp.config";
-  ifstream in(config_file);
-  if(!in.is_open()){
-    cerr << "\033[1;38;5;208mWARNING!!\033[0m Cannot read config file. Check the path to the config. Reverting to default values.\n";
-  }
-
-  string line, key, equal;
-  long value;
-
-  unordered_map<string, unsigned int> config;
-
-  while(getline(in, line)){
-    size_t beginning = line.find_first_not_of(" \t\r");
-    if(beginning == string::npos || line[beginning] == '#') //avoid empty lines and make comments available even with spaces and indentation
-      continue;
-    
-   istringstream ss( line ); // Needs to check for bad configs otherwise it might wipe out the entire history.
-    value = 0; //needed in case of missing values
-    ss >> key >> equal >> value;
-    if(value <= 0) // not a number, negative or 0: all of them wipe the history, keep the default
-      continue;
-    config[key] = value;
-
-   }
-
-  //These values HAVE to be different from 0 otherwise will wipe out the history, if false defaluts to the defalut values above
-  if(config.count("limit")) LIMIT = config["limit"];
-  if(config.count("wait")) N_UPDATES = config["wait"];
-  if(config.count("rows")) MENU_ROWS = config["rows"];
-  if(config.count("halflife_days")) HL = config["halflife_days"]*86400;
-  BYTES_CHECK = (200*(LIMIT + N_UPDATES)); // Rough estimate of the bytesize of the file
-
-}
-
 string lower(string s){
 
   transform(s.begin(), s.end(), s.begin(), ::tolower);
@@ -90,7 +54,52 @@ bool parse_line(const string& line, string& key, string& value){
     return false;
   }
 
-  return !key.empty() && !value.empty();
+  return true;
+}
+//parse function overload for long int
+bool parse_line(const string& line, string& key, long& value){
+
+  string sval;
+  if(!parse_line(line, key, sval))
+    return false;
+  value = strtol(sval.c_str(), nullptr, 10);
+
+  return true;
+}
+
+void read_config(string home){
+
+  string config_file = home + "/.config/nvimpp/nvimpp.config";
+  ifstream in(config_file);
+  if(!in.is_open()){
+    cerr << "\033[1;38;5;208mWARNING!!\033[0m Cannot read config file. Check the path to the config. Reverting to default values.\n";
+  }
+
+  string line, key;
+  long value;
+
+  unordered_map<string, unsigned int> config;
+
+  while(getline(in, line)){
+    size_t beginning = line.find_first_not_of(" \t\r");
+    if(beginning == string::npos || line[beginning] == '#') //avoid empty lines and make comments available even with spaces and indentation
+      continue;
+    
+    if(!parse_line(line, key, value))
+      continue;
+    if(value <= 0) // not a number, negative or 0: all of them wipe the history, keep the default
+      continue;
+    config[key] = value;
+
+   }
+
+  //These values HAVE to be different from 0 otherwise will wipe out the history, if false defaults to the default values above
+  if(config.count("limit")) LIMIT = config["limit"];
+  if(config.count("wait")) N_UPDATES = config["wait"];
+  if(config.count("rows")) MENU_ROWS = config["rows"];
+  if(config.count("halflife_days")) HL = config["halflife_days"]*86400;
+  BYTES_CHECK = (200*(LIMIT + N_UPDATES)); // Rough estimate of the bytesize of the file
+
 }
 
 void read_editors_config(string home, string& editor){

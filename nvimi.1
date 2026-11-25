@@ -1,4 +1,4 @@
-.TH NVIMI 1 "November 2026" "nvimi 1.1.2" "User Commands"
+.TH NVIMI 1 "November 2026" "nvimi 1.2.0" "User Commands"
 .nh
 .SH NAME
 nvimi \- rank and reopen files from the nvimpp launch history
@@ -14,11 +14,13 @@ Without a mode it shows an inline picker below the prompt, with files ranked by 
 Each row shows how many times the file was opened, its score and its path.
 Rows marked
 .B dashboard
-are launches without a file; selecting one opens Neovim in that folder.
+are launches without a file; selecting one opens the editor in that folder.
 .PP
 The selected entry is opened through
 .BR nvimpp (1),
-so the pick is recorded as a new launch.
+so the pick is recorded as a new launch and uses the editor selected in
+.I ~/.config/nvimpp/editors.config
+(Neovim or Vim).
 .SH MODES
 .TP
 .I (none)
@@ -39,7 +41,9 @@ Show a short help and exit.
 Show the version and exit.
 .TP
 .BR \-c ", " \-\-config
-Print the configuration file and exit.
+Print
+.I nvimpp.config
+and exit.
 .SH PICKER KEYS
 .TP
 .BR j ", Down"
@@ -55,9 +59,26 @@ Open the selected entry.
 Quit without opening anything.
 .SH CONFIGURATION
 .B nvimi
-reads the same configuration file as
-.BR nvimpp (1).
+reads
+.IR ~/.config/nvimpp/nvimpp.config ,
+the same file as
+.BR nvimpp (1),
+with one
+.I "key = value"
+pair per line.
+Spaces and tabs are ignored, a line whose first non-blank character is
+.B #
+is a comment, and text after
+.B #
+on a setting line is a comment too.
+Values must be positive whole numbers; a value that is 0, negative or not a number is ignored.
+If a key appears twice, the last line wins.
 If the file is missing, a warning is printed and the defaults are used; a key missing from the file also keeps its default.
+The editor is chosen by
+.BR nvimpp (1)
+from
+.IR editors.config ;
+see its man page.
 .TP
 .B limit
 Number of history lines kept after a trim.
@@ -79,6 +100,11 @@ With a half-life of 7 days, a launch from today counts 1 and one from a week ago
 .TP
 .I ~/.config/nvimpp/nvimpp.config
 Configuration file.
+.TP
+.I ~/.config/nvimpp/editors.config
+Editor selection, read by
+.BR nvimpp (1)
+when an entry is opened.
 .TP
 .I ~/.local/share/nvimpp/history_nvim.csv
 History file written by
@@ -120,7 +146,7 @@ When an entry is opened,
 .B nvimi
 is replaced by
 .BR nvimpp (1),
-so the exit status is that of Neovim.
+so the exit status is that of the editor.
 .SH EXAMPLES
 .TP
 .B nvimi
@@ -133,4 +159,5 @@ See which files are opened most.
 Browse the full launch history with colors.
 .SH SEE ALSO
 .BR nvimpp (1),
-.BR nvim (1)
+.BR nvim (1),
+.BR vim (1)

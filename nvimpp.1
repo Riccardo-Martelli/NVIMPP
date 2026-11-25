@@ -1,14 +1,16 @@
-.TH nvimpp 1 "November 2026" "nvimpp 1.1.2" "User Commands"
+.TH nvimpp 1 "November 2026" "nvimpp 1.2.0" "User Commands"
 .nh
 .SH NAME
-nvimpp \- Neovim wrapper that records every launch for frecency ranking
+nvimpp \- Neovim or Vim wrapper that records every launch for frecency ranking
 .SH SYNOPSIS
 .B nvimpp
-.RI [ nvim-options ]
+.RB [ \-\-vim ]
+.RI [ editor-options ]
 .RI [ file ...]
 .br
 .B nvimpp
-.RI [ nvim-options ]
+.RB [ \-\-vim ]
+.RI [ editor-options ]
 .I query
 .RI [ query ...]
 .B \-\-find
@@ -17,13 +19,16 @@ nvimpp \- Neovim wrapper that records every launch for frecency ranking
 .BR bash | zsh
 .SH DESCRIPTION
 .B nvimpp
-records each launch in a history file, then runs
-.BR nvim (1)
+records each launch in a history file, then runs the editor selected in
+.I editors.config
+.RB ( nvim (1)
+by default, or
+.BR vim (1))
 with the same arguments.
 Each file named on the command line gets one history line with the date, its absolute path and the arguments as typed.
 A launch without a file records the current folder as a dashboard entry.
 .PP
-Neovim options are passed through unchanged.
+Editor options are passed through unchanged.
 Arguments starting with
 .B \-
 or
@@ -48,6 +53,7 @@ is treated as a file.
 The history is read by
 .BR nvimi (1),
 which ranks files by frecency and opens them.
+Launches with Neovim and with Vim share the same history.
 .SH OPTIONS
 .TP
 .B \-\-find
@@ -55,7 +61,7 @@ Treat the non-option words as a search query instead of file names.
 .B nvimpp
 opens the existing file from the history with the highest frecency score whose path matches the query, and records that launch.
 Matching is case-insensitive, the words must appear in the path in the order given, and the last word must appear in the file name.
-If nothing matches, an error is printed and Neovim is not started.
+If nothing matches, an error is printed and the editor is not started.
 .TP
 .BR "\-\-init bash" | zsh
 Print shell code that binds Alt-Enter to run the current command line with
@@ -70,18 +76,44 @@ Load it from the shell startup file with
 .B \-\-vim
 Run
 .BR vim (1)
-instead of
-.BR nvim .
+for this launch, whatever
+.I editors.config
+selects.
 The launch is recorded in the same history.
 .SH CONFIGURATION
-The configuration file contains one
+.B nvimpp
+reads two files from
+.IR ~/.config/nvimpp :
+.I nvimpp.config
+for the history and scoring settings, shared with
+.BR nvimi (1),
+and
+.I editors.config
+for the editor.
+.SS Format
+Both files contain one
 .I "key = value"
-pair per line, with a space on each side of the equals sign.
-Values are whole numbers.
-Empty lines and lines starting with
+pair per line.
+Spaces and tabs are ignored, so
+.B rows=15
+and
+.B "rows = 15"
+are the same.
+A line whose first non-blank character is
 .B #
-are ignored.
-If the file is missing, a warning is printed and the defaults are used.
+is a comment, and text after
+.B #
+on a setting line is a comment too.
+Empty lines and lines with only spaces are skipped.
+If a key appears twice, the last line wins.
+.PP
+If a file is missing, a warning is printed and the defaults are used.
+A line without
+.BR = ,
+or with an empty key or value, prints a warning and is skipped.
+A key missing from the file keeps its default.
+.SS nvimpp.config
+Values must be positive whole numbers; a value that is 0, negative or not a number is ignored and the key keeps its default.
 .TP
 .BI limit " (default 10000)"
 Number of history lines kept after a trim.
@@ -95,19 +127,32 @@ before the next trim.
 Maximum number of rows in the
 .BR nvimi (1)
 picker.
-.PP
-A key missing from the file keeps its default.
-.B nvimi \-c
-prints the current file.
 .TP
 .BI halflife_days " (default 7)"
 Half-life of the frecency score, in days.
+.PP
+.B nvimi \-c
+prints the current file.
+.SS editors.config
+.TP
+.BI editor " (default nvim)"
+Editor to launch:
+.B nvim
+or
+.BR vim .
+The value is case-insensitive.
+Any other value selects
+.BR nvim .
 .SH SCORING
 Each recorded launch adds 0.5^(age/half-life) to the score of its file, where age is the time elapsed since that launch.
 .SH FILES
 .TP
 .I ~/.config/nvimpp/nvimpp.config
-Configuration file.
+History and scoring configuration, shared with
+.BR nvimi (1).
+.TP
+.I ~/.config/nvimpp/editors.config
+Editor selection.
 .TP
 .I ~/.local/share/nvimpp/history_nvim.csv
 History file.
@@ -126,7 +171,7 @@ exits with an error if it is not set.
 .SH EXIT STATUS
 On success
 .B nvimpp
-is replaced by Neovim, so the exit status is that of Neovim.
+is replaced by the editor, so the exit status is that of the editor.
 Otherwise:
 .TP
 .B 1
@@ -138,7 +183,7 @@ was given without a query or found no match, or
 was given an unsupported shell.
 .TP
 .B 127
-Neovim could not be started.
+The editor could not be started.
 .SH EXAMPLES
 .TP
 .B nvimpp main.cpp
@@ -146,11 +191,19 @@ Open and record
 .IR main.cpp .
 .TP
 .B nvimpp \-R notes.md
-Open read-only; the option reaches Neovim unchanged.
+Open read-only; the option reaches the editor unchanged.
 .TP
 .B nvimpp conway cgof \-\-find
 Open the best matching file from the history, for example
 .IR ~/projects/conwaygof/cgof.cpp .
+.TP
+.B nvimpp \-\-vim main.cpp
+Open
+.I main.cpp
+in Vim for this launch only.
+.TP
+.B "echo \(dqeditor = vim\(dq > ~/.config/nvimpp/editors.config"
+Make Vim the default editor.
 .TP
 .B alias nvim=nvimpp
 Record every
@@ -158,4 +211,5 @@ Record every
 typed in the shell.
 .SH SEE ALSO
 .BR nvimi (1),
-.BR nvim (1)
+.BR nvim (1),
+.BR vim (1)

@@ -21,7 +21,7 @@
 
 <img src="media/divider.svg" width="100%" height="4">
 
-* **nvimpp** is a thin wrapper around `nvim`. It records every launch (date, resolved file path, arguments) in a history file, then hands over to Neovim with the arguments untouched. With `--find` it jumps to the best matching file from the history instead of opening the literal name.
+* **nvimpp** is a thin wrapper around `nvim` (or `vim`, see [Choosing the editor](#choosing-the-editor)). It records every launch (date, resolved file path, arguments) in a history file, then hands over to the editor with the arguments untouched. With `--find` it jumps to the best matching file from the history instead of opening the literal name.
 * **nvimi** reads that history. Its default mode is an inline picker that ranks files by frecency (frequency weighted by recency) and opens the selected one. It also has a `stats` and a `history` mode.
 
 <img src="media/divider.svg" width="100%" height="4">
@@ -36,6 +36,8 @@
   * [nvimpp](#nvimpp)
   * [nvimi](#nvimi)
 * [Configuration](#configuration)
+  * [Choosing the editor](#choosing-the-editor)
+  * [Format rules](#format-rules)
 * [Scoring](#scoring)
 * [History file](#history-file)
 * [Exit status](#exit-status)
@@ -49,7 +51,7 @@
 ## Requirements
 
 * Linux, a C++17 compiler (`g++`), `make`
-* Neovim (`nvim`) in `PATH`
+* Neovim (`nvim`) in `PATH`, or Vim (`vim`) if you select it in `editors.config`
 * bash or zsh, for the optional Alt-Enter binding
 
 <img src="media/divider.svg" width="100%" height="4">
@@ -79,9 +81,9 @@ A single `make` builds both programs and installs:
 * `nvimpp` and `nvimi` into `~/.local/bin` (make sure that folder is in your `PATH`)
 * the man pages into `~/.local/share/man/man1`
 * an empty history file into `~/.local/share/nvimpp`
-* the default config into `~/.config/nvimpp/nvimpp.config`, only if you don't have one yet
+* the default configs into `~/.config/nvimpp/nvimpp.config` and `~/.config/nvimpp/editors.config`, each only if you don't have it yet
 
-Running `make` again after an update rebuilds and reinstalls the programs and keeps your config and history.
+Running `make` again after an update rebuilds and reinstalls the programs and keeps your config and history. If you installed a version without `editors.config`, the same `make` adds it next to your existing config.
 
 To install the programs and man pages somewhere else:
 
@@ -122,6 +124,7 @@ nvimpp a.cpp b.cpp # each file gets its own history line
 nvimpp # no file: records the current folder as a dashboard entry
 nvimpp -R notes.md # Neovim flags are passed through unchanged
 nvimpp query --find # open the best match for "query" from the history
+nvimpp --vim file.cpp # use Vim for this launch, whatever editors.config says
 ```
 
 **Enter vs Alt-Enter.** With the binding installed, a line starting with `nvim ` or `nvimpp ` behaves like this:
@@ -150,7 +153,7 @@ nvimi stats # files ranked by number of launches
 nvimi history # every launch with date and time since
 nvimi -h # help
 nvimi -v # version
-nvimi -c # print the config file
+nvimi -c # print nvimpp.config
 ```
 
 **Picker keys**
@@ -180,14 +183,21 @@ Entries marked `dashboard` are bare `nvimpp` launches. Selecting one opens Neovi
 
 ## Configuration
 
-File: `~/.config/nvimpp/nvimpp.config`, installed by `make`.
+Two files in `~/.config/nvimpp`, both installed by `make`:
+
+| File | Read by | Contents |
+|---|---|---|
+| `nvimpp.config` | `nvimpp` and `nvimi` | history size, picker rows, score half-life |
+| `editors.config` | `nvimpp` | which editor to launch |
+
+`nvimpp.config`:
 
 ```
-# nvimpp / nvimi configuration
-limit = 10000
-wait = 1000
+# The inputs on the right of the equal sign have to be positive integers.
 rows = 15
 halflife_days = 7
+limit = 10000
+wait = 1000
 ```
 
 | Key | Meaning |
@@ -197,13 +207,35 @@ halflife_days = 7
 | `rows` | maximum number of rows shown in the picker |
 | `halflife_days` | half-life of the frecency score, in days |
 
-Format rules:
+Values must be positive whole numbers. A value that is 0, negative or not a number is ignored and the key keeps its default.
 
-* one `key = value` per line, with a space on each side of `=`
-* values are whole numbers
-* lines starting with `#` are comments, and so are empty lines
+### Choosing the editor
 
-If the file is missing, both programs print a warning and use the defaults above. A key missing from the file also keeps its default. `nvimi -c` (or `nvimi --config`) prints the current file.
+`editors.config`:
+
+```
+editor = nvim
+```
+
+| Value | Editor launched |
+|---|---|
+| `nvim` (default) | Neovim |
+| `vim` | Vim |
+
+The value is case-insensitive, so `Vim` and `VIM` also select Vim. Any other value falls back to `nvim`. Both editors write to the same history, so the picker and `--find` see files opened with either one. The `--vim` flag forces Vim for a single launch.
+
+### Format rules
+
+These apply to both files:
+
+* one `key = value` per line
+* spaces and tabs are ignored, so `rows=15`, `rows = 15` and `  rows =15` are the same
+* a line whose first non-blank character is `#` is a comment, so comments can be indented
+* text after `#` on a setting line is a comment too: `editor = vim # my default`
+* empty lines and lines with only spaces are skipped
+* if a key appears twice, the last line wins
+
+**Warnings.** If a file is missing, the program prints a warning and uses the defaults. A line without `=` (`rows 15`) or with an empty key or value (`rows =`, `= 15`) prints a warning naming the problem and is skipped. A key missing from the file keeps its default. `nvimi -c` (or `nvimi --config`) prints `nvimpp.config`.
 
 <img src="media/divider.svg" width="100%" height="4">
 
@@ -240,9 +272,9 @@ The file is trimmed automatically. Once it grows past roughly `200 * (limit + wa
 | 2 | | internal error: no mode selected |
 | 4 | | no terminal available for the picker (`/dev/tty`) |
 | 5 | | changing to the folder of a dashboard entry failed |
-| 127 | Neovim could not be started | `nvimpp` could not be started |
+| 127 | the editor could not be started | `nvimpp` could not be started |
 
-On success, `nvimpp` is replaced by Neovim, so its exit status is Neovim's.
+On success, `nvimpp` is replaced by the editor, so its exit status is the editor's.
 
 <img src="media/divider.svg" width="100%" height="4">
 
@@ -257,13 +289,15 @@ After `make`, `man nvimpp` and `man nvimi` work from anywhere, as long as `~/.lo
 **Current limitations**
 
 * The `--find` match is a substring match, not a fuzzy one: `ac` matches `acme.cpp` but not `a.cpp`.
-* Neovim flags that take a value (`-c`, `-u`, `--cmd` and others) are listed in the source. A value flag added in a future Neovim release would have its value recorded as a file name; Neovim itself still receives it correctly.
+* Neovim flags that take a value (`-c`, `-u`, `--cmd` and others) are listed in the source. A value flag added in a future Neovim release would have its value recorded as a file name; Neovim itself still receives it correctly. The same list is used when the editor is Vim.
+* Only `nvim` and `vim` can be selected as the editor for now.
 * Paths and arguments are assumed to be ASCII for display purposes.
 * Built and tested on Linux only (see [Compatibility](#compatibility)).
 
 **Planned**
 
 * Fuzzy matching for `--find`, so that `ac` also finds `a.cpp`.
+* More editors in `editors.config` (Emacs, Helix, Kakoune, micro, nano).
 * Inline search in the `nvimi` picker: type to filter the list instead of only scrolling.
 * Cross-platform compatibility: tested support for macOS and the BSDs, and for Windows through WSL.
 

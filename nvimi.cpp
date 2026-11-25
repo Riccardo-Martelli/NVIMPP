@@ -16,6 +16,8 @@
 #include <sys/ioctl.h>
 #include <filesystem>
 #include <getopt.h>
+#include <cstdlib>
+#include <cctype>
 
 using namespace std;
 
@@ -35,83 +37,74 @@ unsigned int MENU_ROWS = 15; // max rows of the inline picker list
 unsigned int HL = 7*86400; // half-life in seconds
 unsigned int BYTES_CHECK = (200*(LIMIT + N_UPDATES)); // Rough estimate of the bytesize of the file
 
-void read_config(string home){
+// split "key = value" on the first '=', drop a trailing "# comment", strip whitespace
+bool parse_line(const string& line, string& key, string& value){
 
-  string config_file = home + "/.config/nvimpp/nvimpp.config";
-  ifstream in(config_file);
-  if(!in.is_open()){
-    cerr << "\033[1;38;5;208mWARNING!!\033[0m Cannot read config file. Check the path to the config\n";
-    return;
+  size_t eq = line.find('=');//pos the equal sign
+  if(eq == string::npos){
+    cerr << "\033[1;38;5;208mWARNING!!\033[0m Key missing or didn't parse. Reverting to default values.\n";
+    return false;
   }
 
-  string line;
-  string key;
-  long value; //needs to be a long and not unsigned otherwise the check below does not work
-  string equal;
+  key = line.substr(0, eq);
+  value = line.substr(eq + 1);
+  value = value.substr(0, value.find('#'));// fix comment at the end of the cmd
+  auto strip = [](string& s){ s.erase(remove_if(s.begin(), s.end(), [](unsigned char c){ return isspace(c); }), s.end()); }; //lambda as before, recycle
+  strip(key);
+  strip(value);
 
-  unordered_map<string, unsigned int> config;
+  //sanity check
+  if(key.empty() || value.empty()){
+    cerr << "\033[1;38;5;208mWARNING!!\033[0m Empty key or value in '" << line << "', ignored. Reverting to default values.\n";
+    return false;
+  }
 
-  while(getline(in, line)){
-    if(line.empty() || line[0] == '#') //avoid empty lines and make comments available
-      continue;
-    
-    istringstream ss( line ); // Needs to check for bad configs otherwise it might wipe out the entire history.
-    value = 0; //needed in case of missing values
-    ss >> key >> equal >> value;
-    if(value <= 0) // not a number, negative or 0: all of them wipe the history, keep the default
-      continue;
-    config[key] = value;
+  return true;
+}
+//parse function overload for long int
+bool parse_line(const string& line, string& key, long& value){
 
-   }
+  string sval;
+  if(!parse_line(line, key, sval))
+    return false;
+  value = strtol(sval.c_str(), nullptr, 10);
 
-  //safe check
-  if(config.count("limit")) LIMIT = config["limit"];
-  if(config.count("wait")) N_UPDATES = config["wait"];
-  if(config.count("rows")) MENU_ROWS = config["rows"];
-  if(config.count("halflife_days")) HL = 86400*config["halflife_days"]; //86400 is the number of seconds in a 24h day
-  BYTES_CHECK = (200*(LIMIT + N_UPDATES)); // Rough estimate of the bytesize of the file
-
+  return true;
 }
 
-string lower(string s){
+void read_config(string home){
 
-  transform(s.begin(), s.end(), s.begin(), ::tolower);
-  return s;
-}
-
-void read_editors_config(string home, string& editor){
-  
   string config_file = home + "/.config/nvimpp/nvimpp.config";
   ifstream in(config_file);
   if(!in.is_open()){
     cerr << "\033[1;38;5;208mWARNING!!\033[0m Cannot read config file. Check the path to the config. Reverting to default values.\n";
   }
 
-  string line, equal;
-  string key, value;
+  string line, key;
+  long value;
 
-  unordered_map<string, string> config;
+  unordered_map<string, unsigned int> config;
 
   while(getline(in, line)){
-    if(line.empty() || line[0] == '#') //avoid empty lines and make comments available
+    size_t beginning = line.find_first_not_of(" \t\r");
+    if(beginning == string::npos || line[beginning] == '#') //avoid empty lines and make comments available even with spaces and indentation
       continue;
     
-   istringstream ss( line ); // Needs to check for bad configs otherwise it might wipe out the entire history.
-    ss >> key >> equal >> value;
-    //NOTE: Spaces do matter
-    key.erase(remove_if(key.begin(), key.end(), [](unsigned char c){ return isspace(c); } ), key.end());
-    value.erase(remove_if(value.begin(), value.end(), [](unsigned char c){ return isspace(c); }), value.end());
+    if(!parse_line(line, key, value))
+      continue;
+    if(value <= 0) // not a number, negative or 0: all of them wipe the history, keep the default
+      continue;
     config[key] = value;
 
    }
 
-  //These values HAVE to be different from 0 otherwise will wipe out the history, if false defaluts to the defalut values above
-  if(config.count("editor")==1) //BUG: Spaces should not matter
-    lower(config["editor"]) =="vim" ? editor = "vim" : editor = "nvim";
-  else{ //default option
-    cerr << "\033[1;38;5;208mWARNING!!\033[0m Reading multiple editors configs. Reverting to default values.\n";
-    editor = "nvim";
-  }
+  //These values HAVE to be different from 0 otherwise will wipe out the history, if false defaults to the default values above
+  if(config.count("limit")) LIMIT = config["limit"];
+  if(config.count("wait")) N_UPDATES = config["wait"];
+  if(config.count("rows")) MENU_ROWS = config["rows"];
+  if(config.count("halflife_days")) HL = config["halflife_days"]*86400;
+  BYTES_CHECK = (200*(LIMIT + N_UPDATES)); // Rough estimate of the bytesize of the file
+
 }
 
 double weight(long deltaTime, double halflife){
@@ -313,7 +306,7 @@ int main(int argc, char **argv){
     switch(opt){
       case 'h': help(); exit(0);
       case 'v':
-        cout << "nvimi 1.1.2" << "\n";
+        cout << "nvimi 1.2.0" << "\n";
         exit(0);
       case 'c': {
         ifstream conf(home.string() + "/.config/nvimpp/nvimpp.config");
